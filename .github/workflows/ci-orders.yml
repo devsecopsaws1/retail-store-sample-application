@@ -64,8 +64,8 @@ jobs:
 
     - name: Commit and push changes
       run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
+        git config --local user.email "devsecopsaws1@gmail.com"
+        git config --local user.name "devsecopsaws1"
         git add src/$SERVICE_NAME/chart/values.yaml
         git commit -m "Update $SERVICE_NAME image to ${{ github.sha }}" || exit 0
         git push
