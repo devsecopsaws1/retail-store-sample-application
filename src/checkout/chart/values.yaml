@@ -4,9 +4,9 @@
 
 replicaCount: 1
 image:
-  repository: public.ecr.aws/aws-containers/retail-store-sample-checkout
+  repository: 390112040038.dkr.ecr.us-east-1.amazonaws.com/retail-store-checkout
   pullPolicy: Always
-  tag: "1.2.2"
+  tag: "edaed4fcf9d043d37877650c26a5bbd3693d5b7a"
 imagePullSecrets:
   - name: regcred
 nameOverride: ''
@@ -67,9 +67,9 @@ app:
 redis:
   create: false
   image:
-    repository: public.ecr.aws/docker/library/redis
+    repository: 390112040038.dkr.ecr.us-east-1.amazonaws.com/retail-store-checkout
     pullPolicy: IfNotPresent
-    tag: "6.0-alpine"
+    tag: "edaed4fcf9d043d37877650c26a5bbd3693d5b7a"
   service:
     type: ClusterIP
     port: 6379
