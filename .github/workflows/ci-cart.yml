@@ -1,0 +1,79 @@
+name: CI/CD - Cart Service
+
+on:
+  push:
+    branches: [gitops]
+    paths: ['src/cart/**']
+  workflow_dispatch:
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  ECR_REPOSITORY: retail-store-cart
+  SERVICE_NAME: cart
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.MY_GITHUB_TOKEN }}
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Create ECR repository if it doesn't exist
+      run: |
+        aws ecr describe-repositories --repository-names $ECR_REPOSITORY --region $AWS_REGION || \
+        aws ecr create-repository --repository-name $ECR_REPOSITORY --region $AWS_REGION
+
+    - name: Build, tag, and push image to Amazon ECR
+      id: build-image
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        cd src/$SERVICE_NAME
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+        echo "image-tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+    - name: Update Helm values
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        # Update the values.yaml file with new image repository and tag
+        sed -i "s|repository:.*|repository: $ECR_REGISTRY/$ECR_REPOSITORY|g" src/$SERVICE_NAME/chart/values.yaml
+        sed -i "s|tag:.*|tag: \"$IMAGE_TAG\"|g" src/$SERVICE_NAME/chart/values.yaml
+        
+        # Verify the changes
+        echo "Updated values.yaml:"
+        grep -A 3 "image:" src/$SERVICE_NAME/chart/values.yaml
+
+    - name: Commit and push changes
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add src/$SERVICE_NAME/chart/values.yaml
+        git commit -m "Update $SERVICE_NAME image to ${{ github.sha }}" || exit 0
+        git push
+
+    - name: Build summary
+      run: |
+        echo "## 🚀 Cart Service Deployment Summary" >> $GITHUB_STEP_SUMMARY
+        echo "- **Service**: $SERVICE_NAME" >> $GITHUB_STEP_SUMMARY
+        echo "- **Image**: ${{ steps.build-image.outputs.image }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Tag**: ${{ steps.build-image.outputs.image-tag }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Helm Chart**: Updated src/$SERVICE_NAME/chart/values.yaml" >> $GITHUB_STEP_SUMMARY
