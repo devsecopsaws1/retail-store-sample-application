@@ -9,7 +9,7 @@ spec:
   project: retail-store
   source:
     repoURL: https://github.com/devsecopsaws1/retail-store-sample-application
-    targetRevision: main
+    targetRevision: gitops
     path: src/checkout/chart
     helm:
       valueFiles:
