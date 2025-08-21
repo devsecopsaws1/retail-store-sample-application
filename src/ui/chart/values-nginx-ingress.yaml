@@ -29,10 +29,10 @@ ingress:
     # Cert-manager annotations
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
   hosts:
-    - retail-store.iemafzalhassan.in
+    - retail-store.anikatech.in
   tls:
     - hosts:
-        - retail-store.iemafzalhassan.in
+        - retail-store.anikatech.in
       secretName: retail-store-tls
 
 # Application configuration
@@ -62,7 +62,7 @@ metrics:
 # Cert Manager Configuration
 certManager:
   createClusterIssuer: true
-  email: iemafzalhassan@gmail.com
+  email: anikatech@gmail.com
   clusterIssuerName: "letsencrypt-prod"
   server: "https://acme-v02.api.letsencrypt.org/directory"
   privateKeySecretName: "letsencrypt-prod-key" 

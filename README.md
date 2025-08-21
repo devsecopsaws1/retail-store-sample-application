@@ -5,9 +5,9 @@
 <div align="center">
   <div align="center">
 
-[![Stars](https://img.shields.io/github/stars/iemafzalhassan/retail-store-sample-app)](Stars)
-![GitHub License](https://img.shields.io/github/license/iemafzalhassan/retail-store-sample-app?color=green)
-![Dynamic JSON Badge](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fiemafzalhassan%2Fretail-store-sample-app%2Frefs%2Fheads%2Fmain%2F.release-please-manifest.json&query=%24%5B%22.%22%5D&label=release)
+[![Stars](https://img.shields.io/github/stars/anikatech/retail-store-sample-app)](Stars)
+![GitHub License](https://img.shields.io/github/license/anikatech/retail-store-sample-app?color=green)
+![Dynamic JSON Badge](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fanikatech%2Fretail-store-sample-app%2Frefs%2Fheads%2Fmain%2F.release-please-manifest.json&query=%24%5B%22.%22%5D&label=release)
 
 
   </div>
@@ -87,7 +87,7 @@ The Infrastructure Architecture follows cloud-native best practices:
 
 1. **Install Prerequisites**: AWS CLI, Terraform, kubectl, Docker, Helm
 2. **Configure AWS**: `aws configure` with appropriate credentials
-3. **Clone Repository**: `git clone https://github.com/iemafzalhassan/retail-store-sample-app.git`
+3. **Clone Repository**: `git clone https://github.com/anikatech/retail-store-sample-app.git`
 4. **Deploy Infrastructure**: Run Terraform in two phases (see [Getting Started](#getting-started))
 5. **Access Application**: Get load balancer URL and browse the retail store
 
@@ -270,7 +270,7 @@ aws configure
 ### Step 2. Clone the Repository:
 
 ```sh
-git clone https://github.com/iemafzalhassan/retail-store-sample-app.git
+git clone https://github.com/anikatech/retail-store-sample-app.git
 cd retail-store-sample-app
 ```
 

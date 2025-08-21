@@ -333,8 +333,8 @@ jobs:
           SERVICE="${{ matrix.service }}"
           TAG="$(echo ${{ github.sha }} | cut -c1-7)"
 
-          git config --local user.email "gitops@github.com"
-          git config --local user.name "GitOps Bot"
+          git config --local user.email "anikatech@gmail.com"
+          git config --local user.name "anika"
 
           if ! git diff --quiet "src/${SERVICE}/chart/values.yaml"; then
             git add "src/${SERVICE}/chart/values.yaml"
