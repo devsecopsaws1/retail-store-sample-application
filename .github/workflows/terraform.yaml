@@ -138,6 +138,12 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/checkout@v4
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{secrets.AWS_ACCOUNT_ID}}:role/TerraformExecutionRole
+          role-session-name: github-actions-terraform
+          aws-region: ${{ secrets.AWS_REGION }}
       - name: Debug AWS Identity
         run: aws sts get-caller-identity
 
