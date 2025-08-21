@@ -13,7 +13,7 @@ module "eks_addons" {
   oidc_provider_arn = module.retail_app_eks.oidc_provider_arn
 
   # =============================================================================
-  # CERT-MANAGER - SSL Certificate Managementss
+  # CERT-MANAGER - SSL Certificate Managementsss
   # =============================================================================
   enable_cert_manager = true
   cert_manager = {
