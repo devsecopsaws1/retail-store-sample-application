@@ -18,7 +18,7 @@ resource "random_string" "suffix" {
 
 # Local computed values
 locals {
-  # Cluster configuration with unique suffix to avoid conflicts
+  # Cluster configuration with unique suffix to avoid conflictss
   cluster_name = "${var.cluster_name}-${var.environment}"
 
   # Network configuration

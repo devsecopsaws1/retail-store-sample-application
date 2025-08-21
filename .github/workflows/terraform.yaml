@@ -141,56 +141,9 @@ jobs:
       - name: Configure AWS credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::${{secrets.AWS_ACCOUNT_ID}}:role/TerraformExecutionRole
+          role-to-assume: arn:aws:iam::390112040038:role/TerraformExecutionRole
           role-session-name: github-actions-terraform
           aws-region: ${{ secrets.AWS_REGION }}
-      - name: Debug AWS Identity
-        run: aws sts get-caller-identity
-
-      - name: Validate required variables
-        run: |
-          echo "🔐 Validating required GitHub variables for environment: ${{ needs.detect-changes.outputs.environment }}"
-          
-          ENV="${{ needs.detect-changes.outputs.environment }}"
-          MISSING_VARS=()
-          
-          if [ -z "${{ secrets.AWS_REGION }}" ]; then
-            MISSING_VARS+=("AWS_REGION")
-          fi
-          
-          if [ -z "${{ secrets.AWS_ACCESS_KEY_ID }}" ]; then
-            MISSING_VARS+=("AWS_ACCESS_KEY_ID")
-          fi
-          
-          if [ -z "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ]; then
-            MISSING_VARS+=("AWS_SECRET_ACCESS_KEY")
-          fi
-          
-          if [ ${#MISSING_VARS[@]} -gt 0 ]; then
-            echo "❌ Missing required GitHub secrets/variables:"
-            for var in "${MISSING_VARS[@]}"; do
-              echo "   - ${var}"
-            done
-            echo ""
-            echo "Required configuration:"
-            echo "Variables:"
-            echo "  - AWS_REGION"
-            echo "Secrets (for base credentials):"
-            echo "  - AWS_ACCESS_KEY_ID"
-            echo "  - AWS_SECRET_ACCESS_KEY"
-            echo ""
-            echo "Configure these in: Repository Settings > Secrets and variables > Actions"
-            exit 1
-          fi
-          
-          echo "✅ All required variables are configured for ${ENV} environment"
-
-      - name: Configure AWS credentials (Base Account)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
