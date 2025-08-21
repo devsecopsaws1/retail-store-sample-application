@@ -118,7 +118,7 @@ jobs:
         run: |
           echo "🔍 Validating Terraform configuration..."
           cd terraform
-          terraform init -backend=false
+          terraform init -backend=false -upgrade
           if terraform validate; then
             echo "✅ Terraform configuration is valid"
           else

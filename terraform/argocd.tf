@@ -40,7 +40,7 @@
 #           "--insecure"
 #         ]
 #       }
-      
+
 #       # Controller configuration
 #       controller = {
 #         resources = {
@@ -54,7 +54,7 @@
 #           }
 #         }
 #       }
-      
+
 #       # Repo server configuration
 #       repoServer = {
 #         resources = {
@@ -68,7 +68,7 @@
 #           }
 #         }
 #       }
-      
+
 #       # Redis configuration
 #       redis = {
 #         resources = {
@@ -103,7 +103,7 @@
 
 # resource "null_resource" "argocd_apps" {
 #   depends_on = [time_sleep.wait_for_argocd]
-  
+
 #   provisioner "local-exec" {
 #     command = <<-EOT
 #       echo "Deploying ArgoCD projects and applications..."
@@ -112,7 +112,7 @@
 #       echo "ArgoCD applications deployed successfully!"
 #     EOT
 #   }
-  
+
 #   # Trigger re-deployment if ArgoCD configuration changes
 #   triggers = {
 #     argocd_version = var.argocd_chart_version
