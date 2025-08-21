@@ -34,7 +34,7 @@ resource "aws_security_group_rule" "health_checks_to_lb" {
   security_group_id = module.retail_app_eks.cluster_security_group_id
 }
 
-# Allow NodePort range for services (if needed)
+# Allow NodePort range for services (if neededs)
 resource "aws_security_group_rule" "nodeport_access" {
   description       = "Allow NodePort access within VPC"
   type              = "ingress"
