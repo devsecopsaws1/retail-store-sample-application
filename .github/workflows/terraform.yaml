@@ -138,6 +138,8 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/checkout@v4
+      - name: Debug AWS Identity
+        run: aws sts get-caller-identity
 
       - name: Validate required variables
         run: |
