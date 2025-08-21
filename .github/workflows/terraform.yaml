@@ -173,6 +173,19 @@ jobs:
           
           terraform init -backend-config="${BACKEND_CONFIG}"
 
+      - name: Debug file structure
+        run: |
+          echo "📋 Checking file structure..."
+          cd terraform
+          echo "Current directory:"
+          pwd
+          echo "Contents:"
+          ls -la
+          echo ".env directory:"
+          ls -la .env/ || echo "No .env directory"
+          echo ".env/dev directory:"
+          ls -la .env/dev/ || echo "No .env/dev directory"
+          
       - name: Terraform Plan
         id: plan
         run: |
