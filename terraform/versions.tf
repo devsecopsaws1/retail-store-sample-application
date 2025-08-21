@@ -5,6 +5,13 @@
 terraform {
   required_version = ">= 1.0"
 
+  # S3 backend configuration
+  # Backend config is provided via -backend-config flag during terraform init
+  backend "s3" {
+    # Configuration will be provided via .env/{environment}/backend.tf files
+    # during terraform init -backend-config=.env/{env}/backend.tf
+  }
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
