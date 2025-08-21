@@ -28,7 +28,7 @@ module "vpc" {
   enable_dns_hostnames = true
   enable_dns_support   = true
 
-  # Manage default resources for better controls
+  # Manage default resources for better controlss
   manage_default_network_acl    = true
   default_network_acl_tags      = { Name = "${var.cluster_name}-default-nacl" }
   manage_default_route_table    = true
