@@ -5,6 +5,21 @@ on:
     branches: [gitops]
     paths: ['src/**']
   workflow_dispatch:
+    inputs:
+      force_build_all:
+        description: 'Force build all services (ignore change detection)'
+        required: false
+        default: 'false'
+        type: boolean
+      services:
+        description: 'Specific services to build (comma-separated: ui,catalog,cart,orders,checkout)'
+        required: false
+        default: ''
+        type: string
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
 
 env:
   AWS_REGION: ${{ secrets.AWS_REGION }}
@@ -29,21 +44,55 @@ jobs:
           CHANGED_SERVICES=()
           
           echo "🔍 Checking for changes in services..."
+          echo "📋 Event: ${{ github.event_name }}"
+          echo "📋 Ref: ${{ github.ref }}"
+          echo "📋 SHA: ${{ github.sha }}"
           
-          # Check for changes in each service
-          for service in "${SERVICES[@]}"; do
-            if git diff --name-only HEAD~1 HEAD | grep -q "^src/$service/" || [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-              CHANGED_SERVICES+=("$service")
-              echo "✅ Changes detected in: $service"
-            else
-              echo "⏭️ No changes in: $service"
-            fi
-          done
+          # Show git log for debugging
+          echo "📋 Recent commits:"
+          git log --oneline -3 || echo "Could not show git log"
           
-          # If manual trigger, build all services
+          # Handle manual trigger options
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            echo "🔄 Manual trigger - building all services"
-            CHANGED_SERVICES=("ui" "catalog" "cart" "checkout" "orders")
+            if [ "${{ github.event.inputs.force_build_all }}" == "true" ]; then
+              echo "🔄 Manual trigger - force building all services"
+              CHANGED_SERVICES=("ui" "catalog" "cart" "checkout" "orders")
+            elif [ -n "${{ github.event.inputs.services }}" ]; then
+              echo "🔄 Manual trigger - building specified services: ${{ github.event.inputs.services }}"
+              IFS=',' read -ra SPECIFIED_SERVICES <<< "${{ github.event.inputs.services }}"
+              for service in "${SPECIFIED_SERVICES[@]}"; do
+                service=$(echo "$service" | xargs) # trim whitespace
+                if [[ " ${SERVICES[@]} " =~ " ${service} " ]]; then
+                  CHANGED_SERVICES+=("$service")
+                  echo "✅ Added specified service: $service"
+                else
+                  echo "⚠️ Invalid service specified: $service (valid: ${SERVICES[*]})"
+                fi
+              done
+            else
+              echo "🔄 Manual trigger - building all services (default)"
+              CHANGED_SERVICES=("ui" "catalog" "cart" "checkout" "orders")
+            fi
+          else
+            # Check for changes in each service
+            echo "📋 Changed files in this push:"
+            CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || git diff --name-only HEAD^ HEAD 2>/dev/null || git show --name-only --format="" HEAD 2>/dev/null || echo "")
+            
+            if [ -z "$CHANGED_FILES" ]; then
+              echo "⚠️ Could not detect changed files, building all services as fallback"
+              CHANGED_SERVICES=("ui" "catalog" "cart" "checkout" "orders")
+            else
+              echo "$CHANGED_FILES"
+              
+              for service in "${SERVICES[@]}"; do
+                if echo "$CHANGED_FILES" | grep -q "^src/$service/"; then
+                  CHANGED_SERVICES+=("$service")
+                  echo "✅ Changes detected in: $service"
+                else
+                  echo "⏭️ No changes in: $service"
+                fi
+              done
+            fi
           fi
           
           # Check if we have any changes
@@ -83,6 +132,41 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Validate required secrets
+        run: |
+          echo "🔐 Validating required GitHub secrets..."
+          
+          MISSING_SECRETS=()
+          
+          if [ -z "${{ secrets.AWS_ACCESS_KEY_ID }}" ]; then
+            MISSING_SECRETS+=("AWS_ACCESS_KEY_ID")
+          fi
+          
+          if [ -z "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ]; then
+            MISSING_SECRETS+=("AWS_SECRET_ACCESS_KEY")
+          fi
+          
+          if [ -z "${{ secrets.AWS_ACCOUNT_ID }}" ]; then
+            MISSING_SECRETS+=("AWS_ACCOUNT_ID")
+          fi
+          
+          if [ -z "${{ secrets.AWS_REGION }}" ]; then
+            MISSING_SECRETS+=("AWS_REGION")
+          fi
+          
+          if [ ${#MISSING_SECRETS[@]} -gt 0 ]; then
+            echo "❌ Missing required GitHub secrets:"
+            for secret in "${MISSING_SECRETS[@]}"; do
+              echo "   - ${secret}"
+            done
+            echo ""
+            echo "Please configure these secrets in your GitHub repository:"
+            echo "Repository Settings > Secrets and variables > Actions"
+            exit 1
+          fi
+          
+          echo "✅ All required secrets are configured"
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -102,19 +186,68 @@ jobs:
           ECR_REPO="${AWS_ACCOUNT_ID}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/retail-store-${SERVICE}"
           
           echo "🔨 Building ${SERVICE}:${TAG}"
+          echo "📋 Service: ${SERVICE}"
+          echo "📋 Tag: ${TAG}"
+          echo "📋 ECR Repository: ${ECR_REPO}"
+          echo "📋 AWS Region: ${{ env.AWS_REGION }}"
+          
+          # Validate required environment variables
+          if [ -z "${AWS_ACCOUNT_ID}" ]; then
+            echo "❌ AWS_ACCOUNT_ID secret is not set"
+            exit 1
+          fi
+          
+          if [ -z "${{ env.AWS_REGION }}" ]; then
+            echo "❌ AWS_REGION secret is not set"
+            exit 1
+          fi
+          
+          # Check if Dockerfile exists
+          if [ ! -f "src/${SERVICE}/Dockerfile" ]; then
+            echo "❌ Dockerfile not found at src/${SERVICE}/Dockerfile"
+            exit 1
+          fi
+          
+          echo "📋 Dockerfile found at src/${SERVICE}/Dockerfile"
           
           # Create ECR repo if it doesn't exist
-          aws ecr describe-repositories --repository-names "retail-store-${SERVICE}" 2>/dev/null || \
-          aws ecr create-repository --repository-name "retail-store-${SERVICE}" \
-            --image-scanning-configuration scanOnPush=true \
-            --encryption-configuration encryptionType=AES256
+          echo "🏗️ Ensuring ECR repository exists..."
+          if aws ecr describe-repositories --repository-names "retail-store-${SERVICE}" 2>/dev/null; then
+            echo "✅ ECR repository retail-store-${SERVICE} already exists"
+          else
+            echo "🆕 Creating ECR repository retail-store-${SERVICE}..."
+            aws ecr create-repository --repository-name "retail-store-${SERVICE}" \
+              --image-scanning-configuration scanOnPush=true \
+              --encryption-configuration encryptionType=AES256
+            echo "✅ ECR repository created successfully"
+          fi
           
-          # Build and push
-          docker build -t "${ECR_REPO}:${TAG}" -t "${ECR_REPO}:latest" "src/${SERVICE}/"
-          docker push "${ECR_REPO}:${TAG}"
-          docker push "${ECR_REPO}:latest"
+          # Build Docker image
+          echo "🔨 Building Docker image..."
+          if docker build -t "${ECR_REPO}:${TAG}" -t "${ECR_REPO}:latest" "src/${SERVICE}/"; then
+            echo "✅ Docker build successful"
+          else
+            echo "❌ Docker build failed"
+            exit 1
+          fi
           
-          echo "✅ Pushed ${ECR_REPO}:${TAG}"
+          # Push images
+          echo "📤 Pushing images to ECR..."
+          if docker push "${ECR_REPO}:${TAG}"; then
+            echo "✅ Successfully pushed ${ECR_REPO}:${TAG}"
+          else
+            echo "❌ Failed to push ${ECR_REPO}:${TAG}"
+            exit 1
+          fi
+          
+          if docker push "${ECR_REPO}:latest"; then
+            echo "✅ Successfully pushed ${ECR_REPO}:latest"
+          else
+            echo "❌ Failed to push ${ECR_REPO}:latest"
+            exit 1
+          fi
+          
+          echo "✅ Build and push completed successfully"
           echo "ECR_REPO=${ECR_REPO}" >> $GITHUB_ENV
 
       - name: Update Helm values for ${{ matrix.service }}
@@ -125,15 +258,27 @@ jobs:
           VALUES_FILE="src/${SERVICE}/chart/values.yaml"
           
           echo "📝 Updating Helm values for ${SERVICE}"
-          echo "   Repository: ${ECR_REPO}"
-          echo "   Tag: ${TAG}"
-          echo "   File: ${VALUES_FILE}"
+          echo "📋 Repository: ${ECR_REPO}"
+          echo "📋 Tag: ${TAG}"
+          echo "📋 Values file: ${VALUES_FILE}"
           
           # Validate file exists
           if [[ ! -f "${VALUES_FILE}" ]]; then
             echo "❌ Values file not found: ${VALUES_FILE}"
+            echo "📋 Available files in src/${SERVICE}/:"
+            ls -la "src/${SERVICE}/" || echo "Directory not found"
+            if [ -d "src/${SERVICE}/chart" ]; then
+              echo "📋 Files in chart directory:"
+              ls -la "src/${SERVICE}/chart/" || echo "Chart directory empty"
+            fi
             exit 1
           fi
+          
+          echo "✅ Values file found"
+          
+          # Show file content for debugging
+          echo "📋 Current values.yaml content:"
+          cat "${VALUES_FILE}"
           
           # Show before state
           echo "📋 Before update (main service image):"
@@ -158,6 +303,7 @@ jobs:
           ' "${VALUES_FILE}.backup" > "${VALUES_FILE}"
           
           # Validate the update worked
+          echo "📋 Checking if update was successful..."
           if grep -q "${ECR_REPO}" "${VALUES_FILE}" && grep -q "\"${TAG}\"" "${VALUES_FILE}"; then
             echo "✅ Successfully updated ${VALUES_FILE}"
             echo "📋 After update (main service image):"
@@ -166,8 +312,15 @@ jobs:
             # Show that infrastructure images are preserved
             echo "🔒 Infrastructure images preserved:"
             grep -A1 "repository:" "${VALUES_FILE}" | grep -E "(mysql|redis|postgres|rabbitmq|dynamodb-local)" || echo "No infrastructure images found"
+            
+            echo "📋 Updated values.yaml content:"
+            cat "${VALUES_FILE}"
           else
             echo "❌ Update failed - restoring backup"
+            echo "📋 Expected repository: ${ECR_REPO}"
+            echo "📋 Expected tag: \"${TAG}\""
+            echo "📋 Actual content after update:"
+            cat "${VALUES_FILE}"
             mv "${VALUES_FILE}.backup" "${VALUES_FILE}"
             exit 1
           fi
@@ -234,10 +387,29 @@ jobs:
               echo "- 📝 Updated Helm chart values" >> $GITHUB_STEP_SUMMARY
               echo "- 💾 Committed changes to repository" >> $GITHUB_STEP_SUMMARY
               echo "- 🔄 ArgoCD will sync automatically" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "**ECR Repositories:**" >> $GITHUB_STEP_SUMMARY
+              for service in ${{ needs.detect-changes.outputs.changed-services }}; do
+                echo "- \`${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/retail-store-\${service}\`" >> $GITHUB_STEP_SUMMARY
+              done
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "**Image Tag:** \`$(echo ${{ github.sha }} | cut -c1-7)\`" >> $GITHUB_STEP_SUMMARY
             else
               echo "❌ **Status:** Deployment failed" >> $GITHUB_STEP_SUMMARY
-              echo "Check the workflow logs for details" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "**Troubleshooting:**" >> $GITHUB_STEP_SUMMARY
+              echo "1. Check the workflow logs for detailed error messages" >> $GITHUB_STEP_SUMMARY
+              echo "2. Verify all GitHub secrets are configured correctly" >> $GITHUB_STEP_SUMMARY
+              echo "3. Ensure AWS credentials have proper ECR permissions" >> $GITHUB_STEP_SUMMARY
+              echo "4. Verify Dockerfiles exist in service directories" >> $GITHUB_STEP_SUMMARY
+              echo "5. Check Helm values.yaml files are properly formatted" >> $GITHUB_STEP_SUMMARY
             fi
           else
             echo "ℹ️ **Status:** No services changed - no deployment needed" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**To trigger a manual build:**" >> $GITHUB_STEP_SUMMARY
+            echo "1. Go to Actions tab in GitHub" >> $GITHUB_STEP_SUMMARY
+            echo "2. Select 'Deploy' workflow" >> $GITHUB_STEP_SUMMARY
+            echo "3. Click 'Run workflow'" >> $GITHUB_STEP_SUMMARY
+            echo "4. Choose options and run" >> $GITHUB_STEP_SUMMARY
           fi
