@@ -1,5 +1,5 @@
 .DS_Store
-*.tfvars
+# *.tfvars - commented out to allow environment-specific tfvars
 .terraform
 *.tfstate*
 *.lock.hcl

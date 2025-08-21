@@ -1,0 +1,9 @@
+aws_region= "us-east-1"
+cluster_name   = "retail-store-stage"
+environment = "stage"
+kubernetes_version   = "1.33"
+vpc_cidr  =  "10.1.0.0/16"
+enable_single_nat_gateway = false
+enable_monitoring = true
+github_repository = "anikatech/retail-store-sample-app"
+# assume_role_arn = "arn:aws:iam::987654321098:role/TerraformExecutionRoles"

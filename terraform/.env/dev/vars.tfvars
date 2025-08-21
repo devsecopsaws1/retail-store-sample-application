@@ -1,0 +1,7 @@
+aws_region= "us-east-1"
+cluster_name   = "retail-store"
+environment = "dev"
+kubernetes_version   = "1.33"
+vpc_cidr  =  "10.0.0.0/16"
+github_repository = "devsecopsaws1/retail-store-sample-app"
+assume_role_arn = "arn:aws:iam::390112040038:role/TerraformExecutionRole"
