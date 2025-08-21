@@ -33,7 +33,7 @@ concurrency:
 
 env:
   TF_VERSION: "1.9.8"
-  AWS_REGION: ${{ vars.AWS_REGION }}
+  AWS_REGION: ${{ secrets.AWS_REGION }}
 
 # Required for OIDC
 permissions:
