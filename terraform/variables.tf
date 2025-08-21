@@ -55,3 +55,21 @@ variable "enable_monitoring" {
   type        = bool
   default     = false
 }
+
+variable "github_repository" {
+  description = "GitHub repository in the format 'owner/repo' for OIDC trust relationship"
+  type        = string
+  default     = "devsecopsaws1/retail-store-sample-app"
+}
+
+variable "assume_role_arn" {
+  description = "ARN of the IAM role to assume for cross-account access"
+  type        = string
+  default     = null
+}
+
+variable "assume_role_external_id" {
+  description = "External ID for assume role (optional, for additional security)"
+  type        = string
+  default     = null
+}

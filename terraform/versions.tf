@@ -4,7 +4,7 @@
 
 terraform {
   required_version = ">= 1.0"
-  
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -39,6 +39,16 @@ terraform {
 
 provider "aws" {
   region = var.aws_region
+
+  # Assume role configuration for cross-account access
+  dynamic "assume_role" {
+    for_each = var.assume_role_arn != null ? [1] : []
+    content {
+      role_arn     = var.assume_role_arn
+      session_name = "terraform-${var.environment}"
+      external_id  = var.assume_role_external_id
+    }
+  }
 }
 
 provider "helm" {

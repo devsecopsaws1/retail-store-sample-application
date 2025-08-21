@@ -19,7 +19,7 @@ resource "random_string" "suffix" {
 # Local computed values
 locals {
   # Cluster configuration with unique suffix to avoid conflicts
-  cluster_name = "${var.cluster_name}-${random_string.suffix.result}"
+  cluster_name = "${var.cluster_name}-${var.environment}"
 
   # Network configuration
   azs             = slice(data.aws_availability_zones.available.names, 0, 3)
