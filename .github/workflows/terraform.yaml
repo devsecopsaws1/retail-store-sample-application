@@ -146,7 +146,7 @@ jobs:
           ENV="${{ needs.detect-changes.outputs.environment }}"
           MISSING_VARS=()
           
-          if [ -z "${{ vars.AWS_REGION }}" ]; then
+          if [ -z "${{ secrets.AWS_REGION }}" ]; then
             MISSING_VARS+=("AWS_REGION")
           fi
           
