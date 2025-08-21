@@ -3,18 +3,18 @@ name: Deploy
 on:
   push:
     branches: [gitops]
-    paths: ['src/**']
+    paths: ["src/**"]
   workflow_dispatch:
     inputs:
       force_build_all:
-        description: 'Force build all services (ignore change detection)'
+        description: "Force build all services (ignore change detection)"
         required: false
         default: false
         type: boolean
       services:
-        description: 'Specific services to build (comma-separated: ui,catalog,cart,orders,checkout)'
+        description: "Specific services to build (comma-separated: ui,catalog,cart,orders,checkout)"
         required: false
-        default: ''
+        default: ""
         type: string
 
 concurrency:
@@ -42,16 +42,16 @@ jobs:
         run: |
           SERVICES=("ui" "catalog" "cart" "checkout" "orders")
           CHANGED_SERVICES=()
-          
+
           echo "🔍 Checking for changes in services..."
           echo "📋 Event: ${{ github.event_name }}"
           echo "📋 Ref: ${{ github.ref }}"
           echo "📋 SHA: ${{ github.sha }}"
-          
+
           # Show git log for debugging
           echo "📋 Recent commits:"
           git log --oneline -3 || echo "Could not show git log"
-          
+
           # Handle manual trigger options
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             if [ "${{ github.event.inputs.force_build_all }}" == "true" ]; then
@@ -94,14 +94,14 @@ jobs:
               done
             fi
           fi
-          
+
           # Check if we have any changes
           if [ ${#CHANGED_SERVICES[@]} -eq 0 ]; then
             echo "❌ No services changed"
             echo "has-changes=false" >> $GITHUB_OUTPUT
             exit 0
           fi
-          
+
           # Create matrix for changed services only
           MATRIX_JSON="["
           for i in "${!CHANGED_SERVICES[@]}"; do
@@ -111,11 +111,11 @@ jobs:
             MATRIX_JSON+="\"${CHANGED_SERVICES[$i]}\""
           done
           MATRIX_JSON+="]"
-          
+
           echo "changed-services=${CHANGED_SERVICES[*]}" >> $GITHUB_OUTPUT
           echo "matrix={\"service\":$MATRIX_JSON}" >> $GITHUB_OUTPUT
           echo "has-changes=true" >> $GITHUB_OUTPUT
-          
+
           echo "📊 Services to build: ${CHANGED_SERVICES[*]}"
           echo "📊 Generated matrix: {\"service\":$MATRIX_JSON}"
 
@@ -135,25 +135,25 @@ jobs:
       - name: Validate required secrets
         run: |
           echo "🔐 Validating required GitHub secrets..."
-          
+
           MISSING_SECRETS=()
-          
+
           if [ -z "${{ secrets.AWS_ACCESS_KEY_ID }}" ]; then
             MISSING_SECRETS+=("AWS_ACCESS_KEY_ID")
           fi
-          
+
           if [ -z "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ]; then
             MISSING_SECRETS+=("AWS_SECRET_ACCESS_KEY")
           fi
-          
+
           if [ -z "${{ secrets.AWS_ACCOUNT_ID }}" ]; then
             MISSING_SECRETS+=("AWS_ACCOUNT_ID")
           fi
-          
+
           if [ -z "${{ secrets.AWS_REGION }}" ]; then
             MISSING_SECRETS+=("AWS_REGION")
           fi
-          
+
           if [ ${#MISSING_SECRETS[@]} -gt 0 ]; then
             echo "❌ Missing required GitHub secrets:"
             for secret in "${MISSING_SECRETS[@]}"; do
@@ -164,7 +164,7 @@ jobs:
             echo "Repository Settings > Secrets and variables > Actions"
             exit 1
           fi
-          
+
           echo "✅ All required secrets are configured"
 
       - name: Configure AWS credentials
@@ -184,32 +184,32 @@ jobs:
           TAG="$(echo ${{ github.sha }} | cut -c1-7)"
           AWS_ACCOUNT_ID="${{ secrets.AWS_ACCOUNT_ID }}"
           ECR_REPO="${AWS_ACCOUNT_ID}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/retail-store-${SERVICE}"
-          
+
           echo "🔨 Building ${SERVICE}:${TAG}"
           echo "📋 Service: ${SERVICE}"
           echo "📋 Tag: ${TAG}"
           echo "📋 ECR Repository: ${ECR_REPO}"
           echo "📋 AWS Region: ${{ env.AWS_REGION }}"
-          
+
           # Validate required environment variables
           if [ -z "${AWS_ACCOUNT_ID}" ]; then
             echo "❌ AWS_ACCOUNT_ID secret is not set"
             exit 1
           fi
-          
+
           if [ -z "${{ env.AWS_REGION }}" ]; then
             echo "❌ AWS_REGION secret is not set"
             exit 1
           fi
-          
+
           # Check if Dockerfile exists
           if [ ! -f "src/${SERVICE}/Dockerfile" ]; then
             echo "❌ Dockerfile not found at src/${SERVICE}/Dockerfile"
             exit 1
           fi
-          
+
           echo "📋 Dockerfile found at src/${SERVICE}/Dockerfile"
-          
+
           # Create ECR repo if it doesn't exist
           echo "🏗️ Ensuring ECR repository exists..."
           if aws ecr describe-repositories --repository-names "retail-store-${SERVICE}" 2>/dev/null; then
@@ -221,7 +221,7 @@ jobs:
               --encryption-configuration encryptionType=AES256
             echo "✅ ECR repository created successfully"
           fi
-          
+
           # Build Docker image
           echo "🔨 Building Docker image..."
           if docker build -t "${ECR_REPO}:${TAG}" -t "${ECR_REPO}:latest" "src/${SERVICE}/"; then
@@ -230,7 +230,7 @@ jobs:
             echo "❌ Docker build failed"
             exit 1
           fi
-          
+
           # Push images
           echo "📤 Pushing images to ECR..."
           if docker push "${ECR_REPO}:${TAG}"; then
@@ -239,14 +239,14 @@ jobs:
             echo "❌ Failed to push ${ECR_REPO}:${TAG}"
             exit 1
           fi
-          
+
           if docker push "${ECR_REPO}:latest"; then
             echo "✅ Successfully pushed ${ECR_REPO}:latest"
           else
             echo "❌ Failed to push ${ECR_REPO}:latest"
             exit 1
           fi
-          
+
           echo "✅ Build and push completed successfully"
           echo "ECR_REPO=${ECR_REPO}" >> $GITHUB_ENV
 
@@ -256,12 +256,12 @@ jobs:
           TAG="$(echo ${{ github.sha }} | cut -c1-7)"
           ECR_REPO="${{ env.ECR_REPO }}"
           VALUES_FILE="src/${SERVICE}/chart/values.yaml"
-          
+
           echo "📝 Updating Helm values for ${SERVICE}"
           echo "📋 Repository: ${ECR_REPO}"
           echo "📋 Tag: ${TAG}"
           echo "📋 Values file: ${VALUES_FILE}"
-          
+
           # Validate file exists
           if [[ ! -f "${VALUES_FILE}" ]]; then
             echo "❌ Values file not found: ${VALUES_FILE}"
@@ -273,20 +273,20 @@ jobs:
             fi
             exit 1
           fi
-          
+
           echo "✅ Values file found"
-          
+
           # Show file content for debugging
           echo "📋 Current values.yaml content:"
           cat "${VALUES_FILE}"
-          
+
           # Show before state
           echo "📋 Before update (main service image):"
           grep -A3 "^image:" "${VALUES_FILE}" | head -4 || echo "No main image section found"
-          
+
           # Create a backup
           cp "${VALUES_FILE}" "${VALUES_FILE}.backup"
-          
+
           # Update only the main service image (first occurrence under 'image:' section)
           # This preserves infrastructure component images (mysql, redis, postgresql, rabbitmq, dynamodb)
           awk -v repo="${ECR_REPO}" -v tag="${TAG}" '
@@ -301,7 +301,7 @@ jobs:
           /^[a-zA-Z]/ && !/^image:/ { in_main_image = 0 }
           { print }
           ' "${VALUES_FILE}.backup" > "${VALUES_FILE}"
-          
+
           # Validate the update worked
           echo "📋 Checking if update was successful..."
           if grep -q "${ECR_REPO}" "${VALUES_FILE}" && grep -q "\"${TAG}\"" "${VALUES_FILE}"; then
@@ -324,7 +324,7 @@ jobs:
             mv "${VALUES_FILE}.backup" "${VALUES_FILE}"
             exit 1
           fi
-          
+
           # Remove backup
           rm "${VALUES_FILE}.backup"
 
@@ -332,10 +332,10 @@ jobs:
         run: |
           SERVICE="${{ matrix.service }}"
           TAG="$(echo ${{ github.sha }} | cut -c1-7)"
-          
+
           git config --local user.email "gitops@github.com"
           git config --local user.name "GitOps Bot"
-          
+
           if ! git diff --quiet "src/${SERVICE}/chart/values.yaml"; then
             git add "src/${SERVICE}/chart/values.yaml"
             git commit -m "🚀 Update ${SERVICE} Helm chart to ${TAG} - ECR: retail-store-${SERVICE} - Commit: ${{ github.sha }}"
@@ -374,7 +374,7 @@ jobs:
           echo "**Branch:** gitops" >> $GITHUB_STEP_SUMMARY
           echo "**Triggered by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           if [ "${{ needs.detect-changes.outputs.has-changes }}" == "true" ]; then
             echo "**Changed Services:** ${{ needs.detect-changes.outputs.changed-services }}" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
