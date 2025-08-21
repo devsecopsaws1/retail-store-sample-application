@@ -9,7 +9,7 @@ on:
       force_build_all:
         description: 'Force build all services (ignore change detection)'
         required: false
-        default: 'false'
+        default: false
         type: boolean
       services:
         description: 'Specific services to build (comma-separated: ui,catalog,cart,orders,checkout)'
