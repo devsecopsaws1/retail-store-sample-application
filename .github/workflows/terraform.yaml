@@ -2,10 +2,10 @@ name: Terraform Infrastructure (Assume Role)
 
 on:
   push:
-    branches: [gitops]
+    branches: [gitops, stage]
     paths: ["terraform/**"]
   pull_request:
-    branches: [gitops]
+    branches: [gitops, stage]
     paths: ["terraform/**"]
   workflow_dispatch:
     inputs:
@@ -58,6 +58,8 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             ENV="${{ github.event.inputs.environment }}"
+          elif [ "${{ github.ref }}" == "refs/heads/stage" ]; then
+            ENV="stage"
           else
             ENV="dev"
           fi
@@ -263,7 +265,7 @@ jobs:
     needs: [detect-changes, validate, plan]
     if: |
       needs.detect-changes.outputs.terraform-changed == 'true' && 
-      (github.ref == 'refs/heads/gitops' && github.event_name == 'push') ||
+      ((github.ref == 'refs/heads/gitops' || github.ref == 'refs/heads/stage') && github.event_name == 'push') ||
       (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
     environment: ${{ needs.detect-changes.outputs.environment }}
     permissions:
