@@ -433,3 +433,4 @@ jobs:
             echo "3. Ensure assume role ARNs are correct in tfvars files" >> $GITHUB_STEP_SUMMARY
             echo "4. Validate Terraform configuration syntax" >> $GITHUB_STEP_SUMMARY
             echo "5. Check AWS account permissions and quotas" >> $GITHUB_STEP_SUMMARY
+          fi
